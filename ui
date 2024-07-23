@@ -1,0 +1,190 @@
+local ws = {}
+local TweenService = game:GetService("TweenService")
+
+local PlayerGui = game.Players.LocalPlayer.PlayerGui
+
+local IsStudio = game:GetService("RunService")
+local UI = game:GetObjects("rbxassetid://18607999159")[1]
+
+UI.websocket.Visible = true
+
+local wwsUi = UI:Clone()
+wwsUi.ResetOnSpawn=false
+local websocket = wwsUi.websocket
+local TabPages = websocket.TabPages
+TabPages.TabPage.Visible=false
+local TabButtonHolder = websocket.TabButtonHolder
+local UIListLayout = TabButtonHolder.UIListLayout
+local SearchBar = websocket.SearchBar
+local SearchIcon = SearchBar.SearchIcon
+local SearchField = SearchBar.SearchField
+
+websocket.ButtonFrame.Position=UDim2.new(3, 0,0, 0)
+websocket.Check.Position=UDim2.new(3, 0,0, 0)
+websocket.Home.Position=UDim2.new(3, 0,0, 0)
+
+
+local UIS = game:GetService('UserInputService')
+local frame = websocket
+local dragToggle = nil
+local dragSpeed = 0.25
+local dragStart = nil
+local startPos = nil
+
+local function updateInput(input)
+	local delta = input.Position - dragStart
+	local position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+		startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	game:GetService('TweenService'):Create(frame, TweenInfo.new(dragSpeed), {Position = position}):Play()
+end
+
+frame.InputBegan:Connect(function(input)
+	if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then 
+		dragToggle = true
+		dragStart = input.Position
+		startPos = frame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragToggle = false
+			end
+		end)
+	end
+end)
+
+UIS.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		if dragToggle then
+			updateInput(input)
+		end
+	end
+end)
+
+
+
+-- Set necessary properties for UI elements
+wwsUi.Name = "wwsUi"
+wwsUi.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+local tabButtons = {}
+local tabPages = {}
+local activeButton = nil
+
+local function SwitchTab(targetTabPage)
+	for page, button in pairs(tabPages) do
+		if page == targetTabPage then
+			page.Visible = true
+			button.BackgroundColor3 = Color3.fromRGB(43, 43, 43)
+		else
+			page.Visible = false
+			button.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+		end
+	end
+
+	activeButton = tabPages[targetTabPage]
+end
+
+function ws:NewTab(Name)
+	local TabPage = websocket.TabPages.TabPage:Clone()
+	TabPage.Name = Name
+	TabPage.Visible = false
+	TabPage.Parent = TabPages
+
+	local PageButton = websocket.Home:Clone()
+	PageButton.Name = Name
+	PageButton.TabName.Text = Name
+	PageButton.Parent = TabButtonHolder
+
+	tabButtons[PageButton] = TabPage
+	tabPages[TabPage] = PageButton
+
+	PageButton.MouseButton1Click:Connect(function()
+		SwitchTab(TabPage)
+        SearchField.Text="wss://192.168.1.190/"..TabPage.Name
+	end)
+
+	return TabPage
+end
+
+function ws:NewCheck(Name, TabPage)
+	local Check = websocket.Check:Clone()
+	Check.Name = "Check"
+	Check.Parent = TabPage
+	Check.Visible = true
+    Check.Frame.TextLabel.Text=Name
+	local ImageLabel = Check.Frame.ImageLabel
+
+	local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+	local ct = TweenService:Create(ImageLabel, tweenInfo, {ImageColor3 = Color3.fromRGB(67, 214, 255)})
+	local uct = TweenService:Create(ImageLabel, tweenInfo, {ImageColor3 = Color3.fromRGB(27, 87, 104)})
+	local checkvalue = false
+
+	Check.Frame.TextButton.MouseButton1Click:Connect(function()
+		checkvalue = not checkvalue
+		if checkvalue then
+			ct:Play()
+		else
+			uct:Play()
+		end
+        local function TweenTransparency(instance, endTransparency, duration)
+        local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local tweenGoal = { BackgroundTransparency = endTransparency }
+        local tween = game:GetService("TweenService"):Create(instance, tweenInfo, tweenGoal)
+            tween:Play()
+            tween.Completed:Connect(function()
+                -- Reverse transparency tween after completion
+                local reverseTween = game:GetService("TweenService"):Create(instance, tweenInfo, { BackgroundTransparency = 0 })
+                reverseTween:Play()
+            end)
+        end
+
+        TweenTransparency(Check.Frame, 0.5, 0.2)
+	end)
+
+	return {
+		Check = Check,
+		IsChecked = function()
+			return checkvalue
+		end
+	}
+end
+function ws:NewButton(Name, TabPage, callback)
+    -- Clone the button frame template
+    local ButtonFrame = websocket.ButtonFrame:Clone()
+    ButtonFrame.Name = "ButtonFrame"
+    ButtonFrame.Parent = TabPage
+    ButtonFrame.Visible = true
+
+    local ButtonFrameContent = ButtonFrame.Frame
+    local TextButton = ButtonFrameContent.TextButton
+    local TextLabel = ButtonFrameContent.TextLabel
+
+    TextLabel.Text = Name
+
+    TextButton.MouseButton1Click:Connect(function(x, y)
+        if callback then
+            callback()
+        else
+            print(Name .. " button clicked!")
+        end
+
+        local function TweenTransparency(instance, endTransparency, duration)
+            local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            local tweenGoal = { BackgroundTransparency = endTransparency }
+            local tween = game:GetService("TweenService"):Create(instance, tweenInfo, tweenGoal)
+            tween:Play()
+            tween.Completed:Connect(function()
+                local reverseTween = game:GetService("TweenService"):Create(instance, tweenInfo, { BackgroundTransparency = 0 })
+                reverseTween:Play()
+            end)
+        end
+
+        TweenTransparency(ButtonFrameContent, 0.5, 0.2)
+    end)
+end
+
+
+
+
+
+
+return ws
